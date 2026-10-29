@@ -1,6 +1,6 @@
 # CyberShield Security Assessment Report
 
-**Generated:** 2026-10-29T12:47:30+02:00
+**Generated:** 2026-10-29T13:47:30+02:00
 **Assessment type:** Local network audit and log analysis
 **Purpose:** Educational defensive security assessment
 
@@ -24,6 +24,7 @@ This report combines saved Nmap scan observations with authentication log analys
 
 - Log file: `sample_logs/auth.log`
 - Detection threshold: 3
+- Correlation window: 10 minutes
 - Failed authentication events: 4
 - Successful authentication events: 2
 - Unique sources associated with failed logins: 2
@@ -42,7 +43,7 @@ This report combines saved Nmap scan observations with authentication log analys
 - **Severity:** HIGH
 - **Source IP:** `192.0.2.10`
 - **Evidence count:** 3
-- **Details:** The logs contain repeated failed attempts and a successful login from 192.0.2.10. Investigate the event sequence and account activity.
+- **Details:** A successful login from 192.0.2.10 occurred after 3 failed login attempts within 10 minutes. Investigate the account activity.
 
 ## 5. Recommended Actions
 
@@ -55,7 +56,7 @@ This report combines saved Nmap scan observations with authentication log analys
 ## 6. Limitations
 
 - The log analyser uses simple pattern-matching rules.
-- Authentication events are not correlated within time windows.
+- Detection depends on parseable timestamps and simple pattern-matching rules.
 - Scan results describe the system at the time of each scan.
 - Synthetic log entries are not evidence of real incidents.
 - Severity labels are preliminary project-defined indicators.

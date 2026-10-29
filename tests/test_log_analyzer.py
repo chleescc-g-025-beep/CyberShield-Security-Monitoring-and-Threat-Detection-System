@@ -12,11 +12,11 @@ class TestLogAnalyzer(unittest.TestCase):
         self.log_path = Path(self.temp_dir.name) / "auth.log"
 
         self.log_path.write_text(
-            "Failed password for user1 from 192.0.2.10 port 50001 ssh2\n"
-            "Failed password for user1 from 192.0.2.10 port 50002 ssh2\n"
-            "Failed password for user1 from 192.0.2.10 port 50003 ssh2\n"
-            "Accepted password for user1 from 192.0.2.10 port 50004 ssh2\n"
-            "Accepted password for user2 from 192.0.2.30 port 50005 ssh2\n",
+            "Oct 29 10:01:01 testhost sshd[1001]: Failed password for user1 from 192.0.2.10 port 50001 ssh2\n"
+        "Oct 29 10:01:05 testhost sshd[1002]: Failed password for user1 from 192.0.2.10 port 50002 ssh2\n"
+        "Oct 29 10:01:09 testhost sshd[1003]: Failed password for user1 from 192.0.2.10 port 50003 ssh2\n"
+        "Oct 29 10:02:10 testhost sshd[1004]: Accepted password for user1 from 192.0.2.10 port 50004 ssh2\n"
+        "Oct 29 10:03:00 testhost sshd[1005]: Accepted password for user2 from 192.0.2.30 port 50005 ssh2\n",
             encoding="utf-8",
         )
 
@@ -81,6 +81,46 @@ class TestLogAnalyzer(unittest.TestCase):
     def test_invalid_threshold_raises_error(self):
         with self.assertRaises(ValueError):
             analyze_log(self.log_path, threshold=0)
+
+    def test_success_before_failures_does_not_trigger_high_alert(self):
+        self.log_path.write_text(
+            "Oct 29 10:00:00 testhost sshd[1001]: Accepted password for user1 from 192.0.2.10 port 50001 ssh2\n"
+            "Oct 29 10:01:00 testhost sshd[1002]: Failed password for user1 from 192.0.2.10 port 50002 ssh2\n"
+            "Oct 29 10:01:05 testhost sshd[1003]: Failed password for user1 from 192.0.2.10 port 50003 ssh2\n"
+            "Oct 29 10:01:10 testhost sshd[1004]: Failed password for user1 from 192.0.2.10 port 50004 ssh2\n",
+            encoding="utf-8",
+        )
+
+        report = analyze_log(self.log_path)
+
+        high_alerts = [
+            alert for alert in report["alerts"]
+            if alert["type"]
+            == "Failed attempts followed by successful login"
+        ]
+        self.assertEqual(high_alerts, [])
+
+    def test_failures_outside_window_do_not_trigger_high_alert(self):
+        self.log_path.write_text(
+            "Oct 29 10:00:00 testhost sshd[1001]: Failed password for user1 from 192.0.2.10 port 50001 ssh2\n"
+            "Oct 29 10:00:10 testhost sshd[1002]: Failed password for user1 from 192.0.2.10 port 50002 ssh2\n"
+            "Oct 29 10:00:20 testhost sshd[1003]: Failed password for user1 from 192.0.2.10 port 50003 ssh2\n"
+            "Oct 29 10:05:00 testhost sshd[1004]: Accepted password for user1 from 192.0.2.10 port 50004 ssh2\n",
+            encoding="utf-8",
+        )
+
+        report = analyze_log(self.log_path, window_minutes=1)
+
+        high_alerts = [
+            alert for alert in report["alerts"]
+            if alert["type"]
+            == "Failed attempts followed by successful login"
+        ]
+        self.assertEqual(high_alerts, [])
+
+    def test_invalid_window_raises_error(self):
+        with self.assertRaises(ValueError):
+            analyze_log(self.log_path, window_minutes=0)
 
 
 if __name__ == "__main__":

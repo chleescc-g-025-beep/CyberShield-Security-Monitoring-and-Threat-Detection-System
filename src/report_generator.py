@@ -71,6 +71,7 @@ def generate_markdown_report(log_report, scan_paths):
         "",
         f"- Log file: `{log_report['log_file']}`",
         f"- Detection threshold: {log_report['threshold']}",
+	f"- Correlation window: {log_report.get('window_minutes', 10)} minutes",
         f"- Failed authentication events: {log_report['total_failed']}",
         (
             "- Successful authentication events: "
@@ -128,7 +129,7 @@ def generate_markdown_report(log_report, scan_paths):
         "## 6. Limitations",
         "",
         "- The log analyser uses simple pattern-matching rules.",
-        "- Authentication events are not correlated within time windows.",
+        "- Detection depends on parseable timestamps and simple pattern-matching rules.",
         "- Scan results describe the system at the time of each scan.",
         "- Synthetic log entries are not evidence of real incidents.",
         "- Severity labels are preliminary project-defined indicators.",
@@ -177,12 +178,21 @@ def main():
         default=3,
         help="Failed-login alert threshold",
     )
+    parser.add_argument(
+        "--window-minutes",
+        type=int,
+        default=10,
+        help="Time window for correlating failed and successful logins",
+    )
 
     args = parser.parse_args()
 
     try:
-        log_report = analyze_log(args.log, args.threshold)
-
+        log_report = analyze_log(
+	    args.log,
+	    threshold=args.threshold,
+	    window_minutes=args.window_minutes,
+	)
         markdown = generate_markdown_report(
             log_report, args.scan
         )
